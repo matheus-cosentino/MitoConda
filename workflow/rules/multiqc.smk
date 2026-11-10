@@ -64,11 +64,12 @@ rule mqc_lca_abundance:
                 count = int(size_match.group(1)) if size_match else 1
 
                 lineage = parts[-1]
-                taxa = [t for t in lineage.split(';') if t]
+                taxa = [t.strip() for t in lineage.split(';')]
+                non_empty_taxa = [t for t in taxa if t]
                 if len(taxa) > rank_index and taxa[rank_index]:
                     taxon = taxa[rank_index]
-                elif taxa:
-                    taxon = taxa[-1]
+                elif non_empty_taxa:
+                    taxon = non_empty_taxa[-1]
                 else:
                     taxon = "Unclassified"
 

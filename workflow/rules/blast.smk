@@ -53,9 +53,10 @@ rule blast_mito:
     params:
         max_target_seqs=config["blast"]["max_target_seqs"][0],
         evalue=config["blast"]["evalue"][0],
-        qcov_hsp_perc=config["blast"].get("qcov", 80), # Exige no mínimo 80% de cobertura
-        task="megablast", # ou "blastn" se as sequências forem mais divergentes
-        word_size=28 # 28 é padrão do megablast, use 11 ou 15 para blastn padrão
+        qcov_hsp_perc=config["blast"].get("qcov", 50), # Permite alinhar mesmo com adaptador/barcode ONT nas pontas
+        task="blastn", # blastn padrão é mais sensível que megablast para 12S (70% pident)
+        word_size=11, # 11 é padrão do blastn para capturar sequências mais divergentes
+        taxid=",".join(str(t) for t in (config["phylo_target"] if isinstance(config["phylo_target"], list) else [config["phylo_target"]]))
     conda:
         BLAST
     log:
@@ -74,7 +75,7 @@ rule blast_mito:
             -max_target_seqs {params.max_target_seqs} \
             -perc_identity {wildcards.pident} \
             -qcov_hsp_perc {params.qcov_hsp_perc} \
-            -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames scomnames slineage" \
+            -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore staxids sscinames scomnames slineage" -taxids {params.taxid} \
             -out {output} 2>&1 >> {log}
         """
 
@@ -120,10 +121,29 @@ rule get_lineages:
   shell:
     """
     if [ -s {input.blast} ]; then
-        taxonkit lca -i 13 --data-dir {input.db} {input.blast} | \
-        taxonkit reformat -i 14 --data-dir {input.db} -f "{{p}};{{c}};{{o}};{{f}};{{g}};{{s}}" > {output}
+        awk -F'\t' 'BEGIN {{OFS="\t"}} {{
+            q = $1
+            t = $13
+            gsub(/,/, ";", t)
+            if (!(q in seen)) {{
+                seen[q] = 1
+                order[++n] = q
+                line[q] = $1 OFS $2 OFS $3 OFS $4 OFS $5 OFS $6 OFS $7 OFS $8 OFS $9 OFS $10 OFS $11 OFS $12
+                taxids[q] = t
+            }} else if (t != "") {{
+                taxids[q] = taxids[q] ";" t
+            }}
+        }} END {{
+            for (i = 1; i <= n; i++) {{
+                q = order[i]
+                print line[q], taxids[q]
+            }}
+        }}' {input.blast} | \
+        taxonkit lca -i 13 -s ";" --data-dir {input.db} | \
+        taxonkit lineage -i 14 --data-dir {input.db} | \
+        taxonkit reformat -i 15 --data-dir {input.db} -f "{{p}};{{c}};{{o}};{{f}};{{g}};{{s}}" > {output}
     else
-        touch {output}
+        > {output}
     fi
     """
 
@@ -168,12 +188,13 @@ rule summarize_blast_lca:
             
             # Get the lineage (LCA already calculated by TaxonKit)
             lineage = parts[-1] 
-            taxa = [t for t in lineage.split(';') if t]
+            taxa = [t.strip() for t in lineage.split(';')]
+            non_empty_taxa = [t for t in taxa if t]
             
             if len(taxa) > rank_index and taxa[rank_index]:
                 taxon = taxa[rank_index]
-            elif taxa:
-                taxon = taxa[-1]
+            elif non_empty_taxa:
+                taxon = non_empty_taxa[-1]
             else:
                 taxon = "Unclassified"
 
@@ -199,41 +220,61 @@ rule extract_fastas_by_lca:
         fasta_dir = directory("{out_dir}/{sample}/Fasta_by_LCA_{pident}_{rank}/")
     run:
         import os
+        import glob
         from Bio import SeqIO
 
         rank_map = {"phylum": 0, "class": 1, "order": 2, "family": 3, "genus": 4, "species": 5}
         rank_index = rank_map.get(wildcards.rank, 4)
 
-        # 1. Map each sequence ID to the taxon assigned by LCA
-        seq_to_taxon = {}
+        # 1. Map each sequence ID to the taxon assigned by LCA and its BLAST alignment coordinates/strand
+        seq_info = {}
         with open(input.lca, 'r') as f:
             for line in f:
                 parts = line.strip().split('\t')
-                if len(parts) < 2:
+                if len(parts) < 10:
                     continue
 
                 query_id = parts[0]
+                if query_id in seq_info:
+                    continue
+
+                try:
+                    qstart = int(parts[6])
+                    qend = int(parts[7])
+                    sstart = int(parts[8])
+                    send = int(parts[9])
+                except ValueError:
+                    qstart, qend, sstart, send = None, None, None, None
+
                 lineage = parts[-1]
-                taxa = [t for t in lineage.split(';') if t]
+                taxa = [t.strip() for t in lineage.split(';')]
+                non_empty_taxa = [t for t in taxa if t]
                 if len(taxa) > rank_index and taxa[rank_index]:
                     taxon = taxa[rank_index]
-                elif taxa:
-                    taxon = taxa[-1]
+                elif non_empty_taxa:
+                    taxon = non_empty_taxa[-1]
                 else:
                     taxon = "Unclassified"
 
                 taxon_clean = taxon.replace(" ", "_").replace("/", "_").replace("(", "").replace(")", "")
-                seq_to_taxon[query_id] = taxon_clean
+                seq_info[query_id] = (taxon_clean, qstart, qend, sstart, send)
 
-        # 2. Ensure output directory exists
+        # 2. Ensure output directory exists and remove stale FASTA files
         os.makedirs(output.fasta_dir, exist_ok=True)
+        for old_fasta in glob.glob(os.path.join(output.fasta_dir, "*.fasta")):
+            os.remove(old_fasta)
 
-        # 3. Read input FASTA and distribute sequences
+        # 3. Read input FASTA, trim to aligned 12S region, orient to forward strand, and distribute sequences
         handles = {}
         try:
             for record in SeqIO.parse(input.query, "fasta"):
-                if record.id in seq_to_taxon:
-                    t_name = seq_to_taxon[record.id]
+                if record.id in seq_info:
+                    t_name, qstart, qend, sstart, send = seq_info[record.id]
+                    if qstart is not None and qend is not None and 1 <= qstart < qend <= len(record.seq):
+                        record.seq = record.seq[qstart - 1 : qend]
+                    if sstart is not None and send is not None and sstart > send:
+                        record.seq = record.seq.reverse_complement()
+
                     file_path = os.path.join(output.fasta_dir, f"{t_name}.fasta")
 
                     if t_name not in handles:

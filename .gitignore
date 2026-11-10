@@ -6,16 +6,23 @@ data/
 #binaries of snakemake
 .snakemake/
 
-#results of test
+#results and output directories
 results/
+output/
+cavicor_output/
+*_output/
+run_overrides.yaml
+files.txt
 
 #scripts binaries
 workflow/scripts/__psycache__
+**/__pycache__/
 
 # Ignorar todo o conteudo da pasta resources
 resources/*
 # Excecao: manter a pasta de logos
 !resources/logo/
+!resources/genes/
 
 #log of database
 logs/*

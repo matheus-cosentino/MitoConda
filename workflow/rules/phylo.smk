@@ -104,7 +104,7 @@ rule addfragments_align:
     shell:
         """
         if [ -s {input.fragments} ]; then
-            mafft --addfragments {input.fragments} --reorder --op 2.5 --keeplength --thread {threads} {input.ref_aln} > {output.aligned} 2> {log}
+            mafft --addfragments {input.fragments} --adjustdirection --reorder --op 2.5 --keeplength --thread {threads} {input.ref_aln} > {output.aligned} 2> {log}
         else
             cp {input.ref_aln} {output.aligned}
             echo "Input fragments file is empty. Copied reference alignment." > {log}
