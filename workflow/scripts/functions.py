@@ -40,19 +40,33 @@ GENE = []
 
 def get_final_outputs():
   final_outputs = []
+  # Quality Control, Reference DB build, and MultiQC always run
+  final_outputs.extend(expand("{out_dir}/individual_samples/{sample}/Chopper/{sample}_filtered_fastq.gz", out_dir=OUT_DIR, sample=SAMPLE))
+  final_outputs.extend(expand("{out_dir}/individual_samples/{sample}/QC/NanoStat/{sample}_NanoStat.txt", out_dir=OUT_DIR, sample=SAMPLE))
+  final_outputs.extend(expand("resources/blast_db/{gene}/{taxid}.fasta", taxid=PHYLO_TARGET, gene=GENE))
+  final_outputs.extend(expand("{out_dir}/all_samples/{pident}_multiqc_report.html", out_dir=OUT_DIR, pident=BLAST_IDENTITIES))
+
+  rank_list = getattr(sys.modules[__name__], 'LCA_RANKS', None)
+  if not rank_list:
+    rank_list = ["order"]
+  if isinstance(rank_list, str):
+    rank_list = [rank_list]
+
   if MODULES.get("12s_diversity"):
-    rank_list = getattr(sys.modules[__name__], 'LCA_RANKS', None)
-    final_outputs.extend(expand("{out_dir}/{sample}/Abundance/{sample}_{pident}_Abundance_{rank}.tsv", out_dir=OUT_DIR, pident=BLAST_IDENTITIES, sample=SAMPLE, rank=rank_list))
-    final_outputs.extend(expand("{out_dir}/{sample}/Fasta_by_LCA_{pident}_{rank}/", out_dir=OUT_DIR, sample=SAMPLE, pident=BLAST_IDENTITIES, rank=rank_list))
-  if MODULES.get("quality_control"):
-    final_outputs.extend(expand("{out_dir}/{sample}/Chopper/{sample}_filtered_fastq.gz", out_dir=OUT_DIR, sample=SAMPLE))    
-    final_outputs.extend(expand("{out_dir}/{sample}/QC/NanoStat/{sample}_NanoStat.txt", out_dir=OUT_DIR, sample=SAMPLE))    
-    final_outputs.extend(expand("{out_dir}/multiqc_all/{pident}_multiqc_report.html", out_dir=OUT_DIR, pident=BLAST_IDENTITIES))
+    final_outputs.extend(expand("{out_dir}/individual_samples/{sample}/Abundance/{sample}_{pident}_Abundance_{rank}.tsv", out_dir=OUT_DIR, pident=BLAST_IDENTITIES, sample=SAMPLE, rank=rank_list))
+    final_outputs.extend(expand("{out_dir}/individual_samples/{sample}/Fasta_by_LCA_{pident}_{rank}/", out_dir=OUT_DIR, sample=SAMPLE, pident=BLAST_IDENTITIES, rank=rank_list))
   if MODULES.get("phylogeny"):
-    final_outputs.extend(expand("{out_dir}/{sample}/Phylo/{sample}_{taxid}_{pident}_{gene}_Aligned.fasta", out_dir=OUT_DIR, sample=SAMPLE, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE))
-    final_outputs.extend(expand("{out_dir}/{sample}/Phylo/{sample}_{taxid}_{pident}_{gene}_aligned_tree.nwk", out_dir=OUT_DIR, sample=SAMPLE, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE))
-  if MODULES.get("build_db_phylo_only"):
-    final_outputs.extend(expand("resources/blast_db/{gene}/{taxid}.fasta", taxid=PHYLO_TARGET, gene=GENE))
+    final_outputs.extend(expand("{out_dir}/individual_samples/{sample}/Phylo/{sample}_{taxid}_{pident}_{gene}_Aligned.fasta", out_dir=OUT_DIR, sample=SAMPLE, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE))
+    final_outputs.extend(expand("{out_dir}/individual_samples/{sample}/Phylo/{sample}_{taxid}_{pident}_{gene}_aligned_tree.nwk", out_dir=OUT_DIR, sample=SAMPLE, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE))
+    final_outputs.extend(expand("{out_dir}/individual_samples/{sample}/Phylo/{sample}_{taxid}_{pident}_{gene}_genetic_distance.tsv", out_dir=OUT_DIR, sample=SAMPLE, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE))
+    final_outputs.extend(expand("{out_dir}/all_samples/phylogeny/alignments/All_Barcodes_{taxid}_{pident}_{gene}_Aligned.fasta", out_dir=OUT_DIR, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE))
+    final_outputs.extend(expand("{out_dir}/all_samples/phylogeny/trees/All_Barcodes_{taxid}_{pident}_{gene}_aligned_tree.nwk", out_dir=OUT_DIR, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE))
+    final_outputs.extend(expand("{out_dir}/all_samples/phylogeny/trees/All_Barcodes_{taxid}_{pident}_{gene}_tree.svg", out_dir=OUT_DIR, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE))
+    final_outputs.extend(expand("{out_dir}/all_samples/phylogeny/summaries/Overall_Abundance_Richness_{taxid}_{pident}_{gene}_{rank}.tsv", out_dir=OUT_DIR, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE, rank=rank_list))
+    final_outputs.extend(expand("{out_dir}/all_samples/phylogeny/summaries/Filtered_and_Removed_Sequences_{taxid}_{pident}_{gene}_{rank}.tsv", out_dir=OUT_DIR, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE, rank=rank_list))
+    final_outputs.extend(expand("{out_dir}/all_samples/phylogeny/fasta_by_group_{taxid}_{pident}_{gene}_{rank}", out_dir=OUT_DIR, taxid=PHYLO_TARGET, pident=BLAST_IDENTITIES, gene=GENE, rank=rank_list))
+    final_outputs.extend(expand("{out_dir}/all_samples/parameters_values/{taxid}_{gene}_{rank}_ref_identity_distribution.tsv", out_dir=OUT_DIR, taxid=PHYLO_TARGET, gene=GENE, rank=rank_list))
+    final_outputs.extend(expand("{out_dir}/all_samples/parameters_values/{taxid}_{gene}_{rank}_ref_identity_histogram.svg", out_dir=OUT_DIR, taxid=PHYLO_TARGET, gene=GENE, rank=rank_list))
   return final_outputs
 
 ###################################################
@@ -62,7 +76,7 @@ def get_all_basta_read_outputs(wildcards):
   paths = []
   for s in SAMPLE:
     meta = SAMPLE_META.get(s)
-    paths.append(expand("{out_dir}/{sample}/Basta/{sample}_{pident}_LCA_Taxonomy.txt", sample=SAMPLE, pident=BLAST_IDENTITIES, out_dir=OUT_DIR))
+    paths.append(expand("{out_dir}/individual_samples/{sample}/Basta/{sample}_{pident}_LCA_Taxonomy.txt", sample=SAMPLE, pident=BLAST_IDENTITIES, out_dir=OUT_DIR))
   return paths
 
 #############################################
@@ -70,31 +84,109 @@ def get_all_basta_read_outputs(wildcards):
 ############################################
 def get_multiqc_inputs(wildcards):
   inputs = []
-  if MODULES.get("quality_control"):
-    inputs.extend(expand("{out_dir}/{sample}/Chopper/{sample}_chopper_mqc.tsv", out_dir=OUT_DIR, sample=SAMPLE))
-    inputs.extend(expand("{out_dir}/{sample}/QC/NanoStat/{sample}_NanoStat.txt", out_dir=OUT_DIR, sample=SAMPLE))
-    inputs.extend(expand("{out_dir}/{sample}/Vsearch/{sample}_vsearch_mqc.tsv", 
-                       out_dir=OUT_DIR, 
-                       sample=SAMPLE))
+  # 1. Unified Quality Control & Clustering Summary (Chopper + NanoStat + VSEARCH)
+  inputs.extend(expand("{out_dir}/individual_samples/{sample}/QC/{sample}_qc_summary_mqc.tsv", out_dir=OUT_DIR, sample=SAMPLE))
+
+  rank_list = getattr(sys.modules[__name__], 'LCA_RANKS', None)
+  if not rank_list:
+    rank_list = ["order"]
+  if isinstance(rank_list, str):
+    rank_list = [rank_list]
 
   # 2. Diversity Data (LCA/Blast)
   if MODULES.get("12s_diversity"):
-    rank_list = getattr(sys.modules[__name__], 'LCA_RANKS', None)
-    if not rank_list:
-      rank_list = ["genus"]
-    if isinstance(rank_list, str):
-      rank_list = [rank_list]
-
-    inputs.extend(expand("{out_dir}/{sample}/LCA/{sample}_{pident}_{rank}_mqc.tsv", 
+    inputs.extend(expand("{out_dir}/individual_samples/{sample}/LCA/{sample}_{pident}_{rank}_mqc.tsv", 
                          out_dir=OUT_DIR, 
                          sample=SAMPLE, 
                          pident=wildcards.pident,
                          rank=rank_list))
+    inputs.extend(expand("{out_dir}/all_samples/multiqc_data/LCA_Rarefaction_{pident}_{rank}_mqc.html",
+                         out_dir=OUT_DIR,
+                         pident=wildcards.pident,
+                         rank=rank_list))
     # BLAST Metrics
-    inputs.extend(expand("{out_dir}/{sample}/Blast/{sample}_{pident}_blast_summary_mqc.tsv", 
+    inputs.extend(expand("{out_dir}/individual_samples/{sample}/Blast/{sample}_{pident}_blast_summary_mqc.tsv", 
                          out_dir=OUT_DIR, 
                          sample=SAMPLE, 
                          pident=wildcards.pident))
+
+  # 3. Phylogeny Genetic Distance Metrics
+  if MODULES.get("phylogeny"):
+    inputs.extend(expand("{out_dir}/individual_samples/{sample}/Phylo/{sample}_{taxid}_{pident}_{gene}_phylo_summary_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         sample=SAMPLE,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE))
+    inputs.extend(expand("{out_dir}/individual_samples/{sample}/Phylo/{sample}_{taxid}_{pident}_{gene}_phylo_species_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         sample=SAMPLE,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE))
+    inputs.extend(expand("{out_dir}/individual_samples/{sample}/Phylo/{sample}_{taxid}_{pident}_{gene}_phylo_bargraph_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         sample=SAMPLE,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE))
+    inputs.extend(expand("{out_dir}/individual_samples/{sample}/Phylo/{sample}_{taxid}_{pident}_{gene}_phylo_clusters_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         sample=SAMPLE,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE))
+    inputs.extend(expand("{out_dir}/all_samples/multiqc_data/All_Barcodes_{taxid}_{pident}_{gene}_tree_mqc.html",
+                         out_dir=OUT_DIR,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE))
+    inputs.extend(expand("{out_dir}/all_samples/parameters_values/{taxid}_{gene}_{rank}_ref_identity_hist_mqc.html",
+                         out_dir=OUT_DIR,
+                         taxid=PHYLO_TARGET,
+                         gene=GENE,
+                         rank=rank_list))
+    inputs.extend(expand("{out_dir}/all_samples/parameters_values/{taxid}_{gene}_{rank}_ref_identity_summary_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         taxid=PHYLO_TARGET,
+                         gene=GENE,
+                         rank=rank_list))
+    inputs.extend(expand("{out_dir}/all_samples/multiqc_data/Sequence_Filtering_Summary_{taxid}_{pident}_{gene}_{rank}_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE,
+                         rank=rank_list))
+    inputs.extend(expand("{out_dir}/all_samples/multiqc_data/Removed_Sequences_Detail_{taxid}_{pident}_{gene}_{rank}_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE,
+                         rank=rank_list))
+    inputs.extend(expand("{out_dir}/all_samples/multiqc_data/FASTA_Method_Comparison_{taxid}_{pident}_{gene}_{rank}_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE,
+                         rank=rank_list))
+    inputs.extend(expand("{out_dir}/all_samples/multiqc_data/Sample_Richness_Comparison_{taxid}_{pident}_{gene}_{rank}_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE,
+                         rank=rank_list))
+    inputs.extend(expand("{out_dir}/all_samples/multiqc_data/Overall_Rank_Abundance_{taxid}_{pident}_{gene}_{rank}_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE,
+                         rank=rank_list))
+    inputs.extend(expand("{out_dir}/all_samples/multiqc_data/Overall_Species_Abundance_{taxid}_{pident}_{gene}_{rank}_mqc.tsv",
+                         out_dir=OUT_DIR,
+                         taxid=PHYLO_TARGET,
+                         pident=wildcards.pident,
+                         gene=GENE,
+                         rank=rank_list))
 
 
   return inputs

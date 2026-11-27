@@ -19,7 +19,7 @@ rule clean_reads:
   input:
     fastq = os.path.join(DATA, "{sample}.fastq.gz")
   output:
-    fastq_clean = "{out_dir}/{sample}/Chopper/{sample}_filtered_fastq.gz"
+    fastq_clean = "{out_dir}/individual_samples/{sample}/Chopper/{sample}_filtered_fastq.gz"
   params:  
     qual = config["chopper"]["min_quality"][0],
     min_len = config["chopper"]["min_length"][0],
@@ -29,7 +29,9 @@ rule clean_reads:
   conda:
     CHOPPER
   log:
-    "{out_dir}/{sample}/Chopper/{sample}.log"
+    "{out_dir}/all_samples/pipeline_logs/logs/chopper_{sample}.log"
+  benchmark:
+    "{out_dir}/all_samples/pipeline_logs/benchmarks/chopper_{sample}.tsv"
   shell:
     """
     zcat {input.fastq} | chopper -q {params.qual} -l {params.min_len} --maxlength {params.max_len} --threads {threads} | gzip > {output.fastq_clean} 2> {log}        
@@ -40,16 +42,18 @@ rule nanostat_qc:
     message:
         """
         > NanoStat >> Long Read QC Metrics <<
-        > Input >> {input.filtered}
-        > Output >> {output.stat}
+        > Input >> {input.filtered} <<
+        > Output >> {output.stat} <<
         """
     input:
-        filtered = "{out_dir}/{sample}/Chopper/{sample}_filtered_fastq.gz"
+        filtered = "{out_dir}/individual_samples/{sample}/Chopper/{sample}_filtered_fastq.gz"
     output:
-        stat = "{out_dir}/{sample}/QC/NanoStat/{sample}_NanoStat.txt"
+        stat = "{out_dir}/individual_samples/{sample}/QC/NanoStat/{sample}_NanoStat.txt"
     threads: 4
     conda:
-        NANOSTAT 
+        NANOSTAT
+    benchmark:
+        "{out_dir}/all_samples/pipeline_logs/benchmarks/nanostat_{sample}.tsv"
     shell:
         """
         NanoStat --fastq {input.filtered} --threads {threads} --name {output.stat}

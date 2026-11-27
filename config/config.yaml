@@ -36,10 +36,10 @@ envs:
 
 ### Analysis Modules
 modules:
-  12s_diversity: false # BLAST diversity of samples
-  quality_control: false # Data quality control
-  phylogeny: false # Phylogenetic analysis of samples
-  build_db_phylo_only: true # Build reference database for phylogeny only
+  12s_diversity: false # Enable with --diversity
+  phylogeny: false # Enable with --phylo
+  quality_control: true # Always runs automatically
+  build_db_phylo_only: true # Always runs automatically
 
 ### resources
 # Diamond DB to download
@@ -59,9 +59,9 @@ logo_dirs:
 #Homology Search with blast
 blast:
   perc_identity: 
-    - 70
+    #- 70
     #- 80
-    #- 90
+    - 90
     #- 95 
     #- 99
   evalue:
@@ -86,10 +86,11 @@ vsearch:
   identity:
     #- 0.99
     #- 0.95
-    - 0.9
+    #- 0.9
     #- 0.85
     #- 0.8
-    #- 0.7
+    - 0.7
+
   minsize:
     #- 2
     #- 5
@@ -112,22 +113,46 @@ chopper:
     - 800
 
 ########### PHYLO ############
-# Further exploring diversity by phyllogenetic group, just add TaxID of group of interest
+# Further exploring diversity by phylogenetic group, just add TaxID of group of interest
 phylo_target:
-  #- 9397 #chiroptera 
-  - "40674" #mammals
-  #- 9398 #Pteropodidae
+  - "7742" # Vertebrata (all vertebrates: mammals, birds, reptiles, amphibians, fishes)
+  #- "40674" # Mammalia
+  #- "8782"  # Aves
+  #- "8292"  # Amphibia
+  #- "8504"  # Lepidosauria (lizards & snakes)
+  #- "9397"  # Chiroptera
 
-# Mapping between TaxID and taxon names for file extraction
+# Mapping between TaxID and taxon names for clade extraction from LCA lineage
 phylo_names:
+  7742: "Vertebrata"
+  32523: "Tetrapoda"
+  7711: "Chordata"
   40674: "Mammalia"
+  8782: "Aves"
+  8457: "Sauropsida"
+  8504: "Lepidosauria"
+  8459: "Testudines"
+  1294634: "Crocodylia"
+  8292: "Amphibia"
+  186623: "Actinopteri"
   9397: "Chiroptera"
   9398: "Pteropodidae"
+  9415: "Phyllostomidae"
 
 # Mitocondrial Genes to build phylogenetic trees Databases within Fastas
 phylo_genes:
-  - "12s" #12s_Human
+  - "12s" #12s_Vertebrata_multi_class
   #- "MTCYB" #MTCYB_Human
+
+# Reference DB deduplication and taxonomic balancing for phylogeny
+phylo_db:
+  max_per_species: 1  # Keep 1 representative mitogenome per species
+  max_per_genus: 5    # Keep up to 5 species per genus for richer genus-level representation
+  max_per_group: 600  # Max species per vertebrate class when building Vertebrata (7742) DB
+
+# trimAl gap threshold (after removing reference-only columns not covered by barcodes)
+trimal:
+  gt: 0.7
 
 ########### TAXONOMIC LEVEL ############
 taxonkit:
