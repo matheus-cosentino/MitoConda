@@ -91,11 +91,10 @@ help(){
  ${ylo}Input Arguments:${nc}
    --input <DIR>        Directory containing raw reads (.fastq.gz) (Default: data/)
 
- ${ylo}Module Toggles (Enable/Disable Analysis):${nc}
-   --diversity          Enable 12s Diversity Analysis (Default: Disabled)
-   --qc                 Enable Quality Control / MultiQC (Default: Disabled)
-   --phylo              Enable Phylogenetic Analysis (Default: Disabled)
-   --build-db-only      Only build reference database for phylogeny (Default: Disabled)
+ ${ylo}Module Toggles (Enable Analysis):${nc}
+   --diversity          Enable Taxonomic Diversity Analysis (BLAST + LCA Abundance)
+   --phylo              Enable Phylogenetic Analysis (Per-sample + Integrated Tree)
+   (Note: Quality Control, Reference DB build, and MultiQC always run automatically)
  
  ${ylo}Parameter Overrides:${nc}
    --taxid <INT>        Phylo target taxID (e.g., 9415 for phyllostomidae)
@@ -172,11 +171,11 @@ input="data"
 jobs=15
 temp_dir=""
 
-# Module Defaults
+# Module Defaults (QC and Reference DB build always run)
 mod_diversity="false"
-mod_qc="false"
 mod_phylo="false"
-mod_build_db_only="false"
+mod_qc="true"
+mod_build_db_only="true"
 
 # Param Overrides
 override_taxid=""
@@ -193,9 +192,7 @@ while [[ $# -gt 0 ]]; do
 
         # --- Module Toggles ---
         --diversity) mod_diversity="true"; shift ;;
-        --qc) mod_qc="true"; shift ;;
         --phylo) mod_phylo="true"; shift ;;
-        --build-db-only) mod_build_db_only="true"; shift ;;
 
         # --- Parameter Overrides ---
         --taxid) override_taxid="$2"; shift 2 ;;
@@ -281,7 +278,7 @@ echo -e "\n${green}> Snakemake: Creating conda environments (if needed)...${nc}"
 snakemake --configfile "$main_config" "$run_overrides" --use-conda --conda-create-envs-only --quiet
 
 echo -e "\n${green}> Snakemake: Performing a dry-run...${nc}"
-snakemake --jobs $jobs --use-conda --configfile "$main_config" "$run_overrides" --dry-run
+snakemake --jobs $jobs --use-conda --configfile "$main_config" "$run_overrides" --rerun-incomplete --dry-run
 echo "---------------------------------------------------"
 
 echo -e "\n${green}> Snakemake: Starting main execution...${nc}"
@@ -300,7 +297,8 @@ snakemake \
     --keep-going --rerun-incomplete
 
 echo -e "\n${green}> Snakemake: Creating DAG & Report...${nc}"
-snakemake --report "$output/mitoconda_report.html" \
+mkdir -p "$output/all_samples/pipeline_logs"
+snakemake --report "$output/all_samples/pipeline_logs/mitoconda_report.html" \
     --jobs $jobs \
     --use-conda \
     --configfile "$main_config" "$run_overrides" \

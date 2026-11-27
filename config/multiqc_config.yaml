@@ -1,18 +1,108 @@
-# This file controls the appearance and order of the MultiQC report.
+# This file controls the appearance, introductory documentation, and section order of the MultiQC report.
 
-# The 'module_order' list specifies the order of the sections in the report.
-# Sections are identified by their module name or custom content ID.
-# Any modules found by MultiQC but not listed here will be appended at the end.
-module_order:
-  - "multiqc_general_stats" # General Statistics table
-  - "chopper_stats"         # Chopper filtering summary
-  - "nanostat"              # NanoStat QC metrics
-  - "vsearch_stats"         # Custom VSEARCH clustering summary
-  - "blast_metrics"         # Custom BLAST top hits metrics
-  - "order_abundance_plot"  # Custom Order abundance bar plot
-  - "family_abundance_plot" # Custom Family abundance bar plot
-  - "genus_abundance_plot"  # Custom Genus abundance bar plot
-  - "species_abundance_plot" # Custom Species abundance bar plot
-  - "class_abundance_plot"  # Custom Class abundance bar plot
-  - "phylum_abundance_plot" # Custom Phylum abundance bar plot
-  - "references_section"    # References and citations
+title: "MitoConda Aggregate Report"
+subtitle: "Oxford Nanopore Mitochondrial Amplicon Biodiversity, Phylogeny & Reference DB Profiling"
+intro_text: >
+  This report summarizes the complete <b>MitoConda</b> analysis pipeline organized into five main analytical sections:
+  <b>(1) General Sequencing &amp; Clustering Quality Control</b> (Chopper quality/length filtering, NanoStat long-read metrics, and VSEARCH consensus clustering &amp; <i>de novo</i> chimera removal);
+  <b>(2) BLAST + LCA Taxonomic Diversity &amp; Rarefaction</b> (mitochondrial BLASTn homology search, TaxonKit Lowest Common Ancestor abundance barplots, and analytical Hurlbert-Heck rarefaction curves);
+  <b>(3) Phylogenetic Analysis</b> (MAFFT fragment alignment, barcode-guided trimAl cleaning, FastTree GTR+GAMMA Maximum-Likelihood phylogeny, and patristic genetic distance placement);
+  <b>(4) Summary Comparison: BLAST + LCA vs. Phylogeny</b> (FASTA sequence-by-sequence comparison across methods, per-sample taxonomic richness &amp; Shannon diversity <i>H&prime;</i>, and overall dataset abundance); and
+  <b>(5) Reference Database Genetic Distance &amp; Identity Summary</b> (pairwise sequence identity % and genetic <i>p</i>-distance distributions across Phylum, Class, Order, Family, Genus, and Species).
+
+section_comments:
+  nanostat: >
+    <b>1.2 NanoStat Long-Read Quality Metrics:</b> Evaluates the quality and length distributions of filtered Oxford Nanopore amplicon reads per sample/barcode.
+    Check that the <b>Median Read Length</b> matches the expected mitochondrial amplicon size (e.g., ~350–450 bp for 12S rRNA) and that <b>Median Read Quality (Phred Q-score)</b> exceeds Q10–Q12 (≥90–94% per-base accuracy before consensus clustering).
+
+# Order of Custom Content sections inside the custom_content module
+custom_content:
+  order:
+    # 1. General Sequencing & Clustering Quality Control
+    - "sequencing_qc_summary"
+    - "sequence_filtering_audit"
+    - "removed_sequences_detail"
+    # 2. BLAST + LCA Taxonomic Diversity & Rarefaction
+    - "blast_metrics"
+    - "phylum_abundance_plot"
+    - "class_abundance_plot"
+    - "order_abundance_plot"
+    - "family_abundance_plot"
+    - "genus_abundance_plot"
+    - "species_abundance_plot"
+    - "lca_rarefaction_curve"
+    # 3. Phylogenetic Analysis
+    - "phylo_tree_visualization"
+    - "phylo_closest_species_abundance"
+    - "phylo_summary_stats"
+    - "phylo_barcode_species_summary"
+    - "phylo_cluster_distances"
+    # 4. Summary Comparison: BLAST + LCA vs. Phylogeny
+    - "fasta_method_comparison"
+    - "sample_richness_comparison"
+    - "overall_abundance_defined_rank"
+    - "overall_species_abundance_comparison"
+    # 5. Reference Database Genetic Distance & Identity Summary
+    - "ref_db_identity_histogram"
+    - "ref_db_identity_summary"
+    - "references_section"
+
+# Global section order across all MultiQC modules (higher 'order' appears higher in the report)
+report_section_order:
+  # 1. General Sequencing & Clustering Quality Control
+  sequencing_qc_summary:
+    order: 2000
+  sequence_filtering_audit:
+    order: 1950
+  removed_sequences_detail:
+    order: 1900
+
+  # 2. BLAST + LCA Taxonomic Diversity & Rarefaction
+  blast_metrics:
+    order: 1600
+  phylum_abundance_plot:
+    order: 1550
+  class_abundance_plot:
+    order: 1500
+  order_abundance_plot:
+    order: 1450
+  family_abundance_plot:
+    order: 1400
+  genus_abundance_plot:
+    order: 1350
+  species_abundance_plot:
+    order: 1300
+  lca_rarefaction_curve:
+    order: 1250
+
+  # 3. Phylogenetic Analysis
+  phylo_tree_visualization:
+    order: 1100
+  phylo_closest_species_abundance:
+    order: 1050
+  phylo_summary_stats:
+    order: 1000
+  phylo_barcode_species_summary:
+    order: 950
+  phylo_cluster_distances:
+    order: 900
+
+  # 4. Summary Comparison: BLAST + LCA vs. Phylogeny
+  fasta_method_comparison:
+    order: 800
+  sample_richness_comparison:
+    order: 750
+  overall_abundance_defined_rank:
+    order: 700
+  overall_species_abundance_comparison:
+    order: 650
+
+  # 5. Reference Database Genetic Distance & Identity Summary
+  ref_db_identity_histogram:
+    order: 500
+  ref_db_identity_summary:
+    order: 450
+  references_section:
+    order: 100
+  multiqc_software_versions:
+    order: 50
